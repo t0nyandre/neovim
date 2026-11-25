@@ -29,7 +29,37 @@ return {
 	},
 
 	mason = { "clangd", "clang-format", "cpplint" },
-	requires = { "gcc", "g++" },
+	requires = { "gcc", "g++", "gdb" },
+
+	-- gdb >= 14 speaks DAP natively (`gdb -i dap`). <leader>dc rebuilds with the active provider
+	-- (cmake / single-file g++) and debugs what it produced. See modules/debug/dap.lua.
+	dap = function()
+		local configs = {
+			{
+				name = "Build & debug",
+				type = "gdb",
+				request = "launch",
+				program = function()
+					local program = require("core.actions").build_program()
+					return program or require("dap").ABORT
+				end,
+				cwd = function()
+					return vim.fs.root(0, { "CMakeLists.txt" }) or vim.fn.getcwd()
+				end,
+				stopAtBeginningOfMainSubprogram = false,
+			},
+		}
+		return {
+			adapters = {
+				gdb = {
+					type = "executable",
+					command = "gdb",
+					args = { "--quiet", "--interpreter=dap", "--eval-command", "set print pretty on" },
+				},
+			},
+			configurations = { c = configs, cpp = configs },
+		}
+	end,
 
 	provider = {
 		priority = 10,
@@ -42,6 +72,9 @@ return {
 				return ("%s && %s"):format(cmd, vim.fn.shellescape(out))
 			end,
 		},
+		program = function(ctx)
+			return vim.fn.fnamemodify(ctx.file, ":r")
+		end,
 	},
 
 	buffer = function(buf)

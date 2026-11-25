@@ -12,6 +12,8 @@
 --     requires   = { "node" },                      -- external executables (health check)
 --     plugins    = { ...lazy specs },               -- extra plugins this language needs
 --     provider   = { actions = { run = ... } },      -- core.actions provider (run/build/test)
+--     dap        = { adapters = { gdb = {...} },     -- nvim-dap adapters + filetype -> configurations
+--                    configurations = { cpp = {...} } }, -- (or a function(opts) returning that)
 --     buffer     = function(buf, opts) end,         -- per-buffer settings on FileType
 --     opts       = {},                              -- defaults, overridable from the user config
 --   }
@@ -87,6 +89,25 @@ function M.servers()
 				cfg = cfg(lang.options)
 			end
 			result[server] = vim.tbl_deep_extend("force", result[server] or {}, cfg or {})
+		end
+	end)
+	return result
+end
+
+--- Merged nvim-dap spec: { adapters = name -> adapter, configurations = filetype -> list }.
+--- Functions are resolved here, so call this once nvim-dap is loaded.
+function M.dap()
+	local result = { adapters = {}, configurations = {} }
+	each(function(lang)
+		local spec = lang.dap
+		if type(spec) == "function" then
+			spec = spec(lang.options)
+		end
+		for name, adapter in pairs(spec and spec.adapters or {}) do
+			result.adapters[name] = adapter
+		end
+		for ft, list in pairs(spec and spec.configurations or {}) do
+			result.configurations[ft] = vim.list_extend(result.configurations[ft] or {}, list)
 		end
 	end)
 	return result

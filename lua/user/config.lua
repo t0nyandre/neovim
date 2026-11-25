@@ -51,8 +51,11 @@ return {
 		["git.lazygit"] = true,
 		["diagnostics.trouble"] = true,
 
+		-- debug
+		["debug.dap"] = true,
+
 		-- tools
-		["tools.cmake"] = true,
+		["tools.cmake"] = true, -- e.g. { build_type = "Release", run = "./build/tank" }
 		["tools.platformio"] = true,
 		["tools.codesnap"] = true, -- e.g. { save_dir = "~/Pictures/CodeSnaps" } to override WSL auto-detect
 	},

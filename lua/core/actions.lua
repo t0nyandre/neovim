@@ -11,7 +11,8 @@
 --       run = function(ctx) ... end,         -- function: return a command string, or do it yourself
 --     },
 --     tasks = function(ctx) return { { name = "lint", cmd = "npm run lint" } } end, -- extra picker entries
---   }
+--     program = function(ctx) return "/abs/path/to/binary" end, -- optional: what `build` produces
+--   }                                                             -- (used by the debugger; nil = cancel)
 -- ctx = { buf, file, ft, root }
 --
 -- <leader>r/b/t dispatch run/build/test to the best provider; <leader>R picks from every
@@ -81,6 +82,52 @@ function M.exec(name)
 		end
 	end
 	vim.notify(("No '%s' action for this buffer"):format(name), vim.log.levels.WARN)
+end
+
+--- Build with the best provider that knows its program, then return the program's path.
+--- Must be called from a coroutine (nvim-dap evaluates config functions in one).
+---@return string|nil program, table|nil ctx
+function M.build_program()
+	local item
+	for _, candidate in ipairs(M.applicable()) do
+		local p = candidate.provider
+		if p.program and p.actions and p.actions.build then
+			item = candidate
+			break
+		end
+	end
+	if not item then
+		vim.notify("No provider here can build a debuggable program", vim.log.levels.WARN)
+		return nil
+	end
+
+	local ctx, provider = item.ctx, item.provider
+	local cmd = provider.actions.build
+	if type(cmd) == "function" then
+		cmd = cmd(ctx)
+	end
+	if type(cmd) ~= "string" then
+		return nil
+	end
+
+	local co = assert(coroutine.running(), "build_program must run inside a coroutine")
+	vim.notify(("%s: building…"):format(provider.name))
+	vim.system({ "sh", "-c", cmd }, { cwd = ctx.root, text = true }, function(res)
+		vim.schedule(function()
+			coroutine.resume(co, res)
+		end)
+	end)
+	local res = coroutine.yield()
+
+	if res.code ~= 0 then
+		local output = (res.stdout or "") .. (res.stderr or "")
+		vim.fn.setqflist({}, " ", { title = provider.name .. ": build", lines = vim.split(output, "\n") })
+		vim.cmd("botright copen")
+		vim.notify(("%s: build failed (see quickfix)"):format(provider.name), vim.log.levels.ERROR)
+		return nil
+	end
+
+	return provider.program(ctx), ctx
 end
 
 function M.pick()
