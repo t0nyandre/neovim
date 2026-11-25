@@ -1,31 +1,35 @@
-local M = {}
+return {
+	filetypes = { "python" },
+	treesitter = { "python" },
 
-function M.setup()
-	-- Language specific customizations go here
+	lsp = {
+		basedpyright = {
+			settings = {
+				basedpyright = {
+					analysis = { typeCheckingMode = "standard" },
+				},
+			},
+		},
+	},
 
-	-- Example:
-	-- vim.bo.expandtab = true
-	-- vim.bo.shiftwidth = 4
+	formatters = { python = { "ruff_organize_imports", "ruff_format" } },
+	linters = { python = { "ruff" } },
 
-	local wk = require("which-key")
-	local map = vim.keymap.set
+	mason = { "basedpyright", "ruff" },
+	requires = { "python3" },
 
-	local opts = {
-		buffer = true,
-		silent = true,
-	}
-
-	map("n", "<leader>cr", "<cmd>!python3 %<CR>", opts)
-	map("n", "<leader>ct", "<cmd>!pytest<CR>", opts)
-	map("n", "<leader>cv", "<cmd>!source .venv/bin/activate<CR>", opts)
-
-	wk.add({
-		{ "<leader>c", group = "Python" },
-
-		{ "<leader>cr", desc = "Run File" },
-		{ "<leader>ct", desc = "Run Tests" },
-		{ "<leader>cv", desc = "Activate Venv" },
-	})
-end
-
-return M
+	provider = {
+		actions = {
+			run = function(ctx)
+				-- Prefer the project's virtualenv if there is one
+				local venv = vim.fs.root(ctx.buf, { ".venv" })
+				local python = venv and (venv .. "/.venv/bin/python") or "python3"
+				return ("%s %s"):format(python, vim.fn.shellescape(ctx.file))
+			end,
+			test = function(ctx)
+				local venv = vim.fs.root(ctx.buf, { ".venv" })
+				return venv and (venv .. "/.venv/bin/python -m pytest") or "pytest"
+			end,
+		},
+	},
+}

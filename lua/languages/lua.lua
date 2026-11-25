@@ -1,23 +1,34 @@
-local M = {}
+return {
+	filetypes = { "lua" },
+	treesitter = { "lua", "luadoc" },
 
-function M.setup()
-	local map = vim.keymap.set
+	lsp = {
+		lua_ls = {
+			settings = {
+				Lua = {
+					runtime = { version = "LuaJIT" },
+					diagnostics = { globals = { "vim", "Snacks" } },
+					workspace = {
+						checkThirdParty = false,
+						library = { vim.env.VIMRUNTIME },
+					},
+					hint = { enable = true },
+				},
+			},
+		},
+	},
 
-	local opts = {
-		buffer = true,
-		silent = true,
-	}
-	local wk = require("which-key")
+	formatters = { lua = { "stylua" } },
 
-	map("n", "<leader>cs", "<cmd>source %<CR>", opts)
-	map("n", "<leader>cr", "<cmd>source $MYVIMRC<CR>", opts)
+	mason = { "lua-language-server", "stylua" },
 
-	wk.add({
-		{ "<leader>c", group = "Lua" },
-
-		{ "<leader>cs", desc = "Source File" },
-		{ "<leader>cr", desc = "Reload Config" },
-	})
-end
-
-return M
+	provider = {
+		actions = {
+			-- Source the current file into the running Neovim
+			run = function(ctx)
+				vim.cmd.source(vim.fn.fnameescape(ctx.file))
+				vim.notify("Sourced " .. vim.fn.fnamemodify(ctx.file, ":~:."))
+			end,
+		},
+	},
+}
