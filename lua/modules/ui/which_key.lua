@@ -14,6 +14,7 @@ return {
 					wk.setup(o)
 					wk.add({
 						{ "<leader>u", group = "toggle" },
+						{ "<leader>m", group = "make" },
 						{ "<leader>x", group = "diagnostics" },
 					})
 					wk.add(require("core.modules").collect("groups"))

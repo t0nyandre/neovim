@@ -1,5 +1,6 @@
 -- C / C++. Single-file build/run fallback; CMake and PlatformIO projects override it
--- (see modules/tools). clangd finds compile_commands.json in the root or build/ by itself.
+-- (see modules/tools). clangd finds compile_commands.json in the root or build/ by itself;
+-- <leader>mc (re)generates it in CMake / PlatformIO projects.
 
 local function compile(ctx)
 	local compiler = ctx.ft == "c" and "gcc -std=c17" or "g++ -std=c++20"
@@ -44,7 +45,7 @@ return {
 					return program or require("dap").ABORT
 				end,
 				cwd = function()
-					return vim.fs.root(0, { "CMakeLists.txt" }) or vim.fn.getcwd()
+					return require("core.util").outermost_root(0, "CMakeLists.txt") or vim.fn.getcwd()
 				end,
 				stopAtBeginningOfMainSubprogram = false,
 			},

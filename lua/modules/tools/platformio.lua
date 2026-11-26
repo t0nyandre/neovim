@@ -1,10 +1,11 @@
--- Inside a PlatformIO project, <leader>b/r/t use pio (highest priority), plus <leader>e* extras.
+-- Inside a PlatformIO project, <leader>m* use pio (highest priority):
+--   mb build   mr/mu upload   mt test   mc compile_commands.json (pio compiledb)   mC clean
+--   mm serial monitor
+-- mu and mm exist only in buffers inside a PlatformIO project.
 return {
 	desc = "PlatformIO actions in projects with platformio.ini",
 
 	requires = { "pio" },
-
-	groups = { { "<leader>e", group = "embedded" } },
 
 	setup = function()
 		local actions = require("core.actions")
@@ -20,19 +21,36 @@ return {
 				test = "pio test",
 				upload = "pio run --target upload",
 				monitor = "pio device monitor",
-				compiledb = "pio run --target compiledb",
+				configure = "pio run --target compiledb",
 				clean = "pio run --target clean",
 			},
 		})
 
-		local function map(lhs, action, desc)
-			vim.keymap.set("n", lhs, function()
-				actions.exec(action)
-			end, { desc = desc })
+		local function attach(buf)
+			if vim.b[buf].platformio_keys or not vim.fs.root(buf, { "platformio.ini" }) then
+				return
+			end
+			vim.b[buf].platformio_keys = true
+			local function map(lhs, action, desc)
+				vim.keymap.set("n", lhs, function()
+					actions.exec(action)
+				end, { buffer = buf, desc = desc })
+			end
+			map("<leader>mu", "upload", "Upload firmware")
+			map("<leader>mm", "monitor", "Serial monitor")
 		end
-		map("<leader>eb", "build", "Build firmware")
-		map("<leader>eu", "upload", "Upload firmware")
-		map("<leader>em", "monitor", "Serial monitor")
-		map("<leader>ec", "compiledb", "Generate compile DB")
+
+		vim.api.nvim_create_autocmd("FileType", {
+			group = vim.api.nvim_create_augroup("tools.platformio", { clear = true }),
+			pattern = { "c", "cpp" },
+			callback = function(ev)
+				attach(ev.buf)
+			end,
+		})
+		for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+			if vim.api.nvim_buf_is_loaded(buf) and vim.tbl_contains({ "c", "cpp" }, vim.bo[buf].filetype) then
+				attach(buf)
+			end
+		end
 	end,
 }

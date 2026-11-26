@@ -1,7 +1,7 @@
 -- Global keymaps that don't belong to a module. Leader groups (which-key):
 --   <leader>f find   <leader>c code   <leader>x diagnostics   <leader>g git
---   <leader>u toggles   <leader>e embedded   <leader>s snapshot
---   <leader>r run   <leader>b build   <leader>t test   <leader>R pick task
+--   <leader>u toggles   <leader>s snapshot   <leader>d debug
+--   <leader>m make: build / run / test / configure / clean / pick task (core/actions.lua)
 
 local map = vim.keymap.set
 

@@ -6,6 +6,8 @@
 --     priority = 50,                         -- higher wins (platformio 100 > cmake 50 > language 10)
 --     filetypes = { "c", "cpp" },            -- optional: only for these filetypes
 --     root_markers = { "CMakeLists.txt" },   -- optional: only inside such a project; sets ctx.root
+--     outermost_root = true,                 -- optional: root is the outermost marker inside the
+--                                            -- git repo, not the nearest (nested CMakeLists.txt)
 --     actions = {
 --       build = "cmake --build build",       -- string: shell command run in the project root
 --       run = function(ctx) ... end,         -- function: return a command string, or do it yourself
@@ -15,8 +17,10 @@
 --   }                                                             -- (used by the debugger; nil = cancel)
 -- ctx = { buf, file, ft, root }
 --
--- <leader>r/b/t dispatch run/build/test to the best provider; <leader>R picks from every
--- action and task of every provider that applies to the current buffer.
+-- <leader>m ("make") dispatches to the best provider:
+--   mb build   mr run   mt test   mc configure (compile_commands.json)   mC clean   mp pick task
+-- mp lists every action and task of every provider that applies to the current buffer.
+-- Providers may add more <leader>m keys (platformio: mu upload, mm monitor).
 
 local M = {}
 
@@ -41,7 +45,16 @@ local function context(provider, buf)
 	local file = vim.api.nvim_buf_get_name(buf)
 	local root = vim.fn.getcwd()
 	if provider.root_markers then
-		root = vim.fs.root(buf, provider.root_markers)
+		if provider.outermost_root then
+			for _, marker in ipairs(provider.root_markers) do
+				root = require("core.util").outermost_root(buf, marker)
+				if root then
+					break
+				end
+			end
+		else
+			root = vim.fs.root(buf, provider.root_markers)
+		end
 		if not root then
 			return nil
 		end
@@ -161,17 +174,17 @@ function M.pick()
 end
 
 function M.setup()
-	local map = vim.keymap.set
-	map("n", "<leader>r", function()
-		M.exec("run")
-	end, { desc = "Run" })
-	map("n", "<leader>b", function()
-		M.exec("build")
-	end, { desc = "Build" })
-	map("n", "<leader>t", function()
-		M.exec("test")
-	end, { desc = "Test" })
-	map("n", "<leader>R", M.pick, { desc = "Pick task" })
+	local function map(lhs, action, desc)
+		vim.keymap.set("n", lhs, function()
+			M.exec(action)
+		end, { desc = desc })
+	end
+	map("<leader>mb", "build", "Build")
+	map("<leader>mr", "run", "Run")
+	map("<leader>mt", "test", "Test")
+	map("<leader>mc", "configure", "Configure (compile_commands.json)")
+	map("<leader>mC", "clean", "Clean")
+	vim.keymap.set("n", "<leader>mp", M.pick, { desc = "Pick task" })
 end
 
 return M
